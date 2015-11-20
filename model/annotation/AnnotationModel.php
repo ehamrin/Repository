@@ -28,7 +28,7 @@ abstract class AnnotationModel implements \model\IModel
                         $validator = new $validationClass($parameter);
                     }
                     /** @var $validator \model\Validation */
-                    if(!$validator->Validate($value)){
+                    if(!$validator->Validate($value) && !($name == 'Required' && $reader->getParameter('Default'))){
                         $this->_modelErrors[$property->name][$name] = $validator->GetMessage();
                     }
                 }
