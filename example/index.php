@@ -9,11 +9,17 @@ $conn->setAttribute(\PDO::ATTR_ERRMODE, \PDO::ERRMODE_EXCEPTION);
 $repository = new UserRepository($conn);
 /*
  * OR:
- * $repository = new \model\annotation\PDORepository("\\example\\User", $conn);
+ * $repository = new \model\annotation\repository\PDORepository("\\example\\User", $conn);
  */
 
-//$model = $repository->find(19);
-//$model->name = "test";
-//$repository->save($model);
+
+$model = new \example\User();
+$model->name = "test";
+$model->pid = "900101-0101";
+/*
+if(!$repository->save($model)){
+  debug($model->getModelError());
+}
+*/
 
 debug($repository->findAll());

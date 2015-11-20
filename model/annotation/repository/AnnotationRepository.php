@@ -1,6 +1,8 @@
 <?php
 
-namespace model\annotation;
+namespace model\annotation\repository;
+
+use model\annotation\DocBlockReader;
 
 abstract class AnnotationRepository
 {

@@ -14,6 +14,7 @@ class User extends \model\annotation\AnnotationModel
     /**
      * @Column
      * @Required    ["You must assign a name"]
+     * @Default     ["John Doe"]
      * @MaxLength   [50, "Name must be no longer than 50 characters"]
      */
     public $name;
@@ -21,46 +22,17 @@ class User extends \model\annotation\AnnotationModel
     /**
      * @Column
      * @Required    ["You must assign a pid"]
-     * @MaxLength   [50, "pid must be no longer than 50 characters"]
+     * @RegEx       ["/^((19|20)?[0-9]{2})(0[1-9]|1[012])(0[1-9]|[12][0-9]|3[01])(-)?[0-9pPtTfF][0-9]{3}$/", "Must be a valid Swedish personal ID-number"]
+     * @MaxLength   [12, "pid must be no longer than 11 characters"]
      */
     public $pid;
 
     /**
      * @Column
-     * @Required    ["You must assign a phone"]
-     * @MaxLength   [50, "phone must be no longer than 50 characters"]
+     * @Default     ["CURRENT_TIMESTAMP"]
+     * @Required    ["You must assign a datetime"]
+     * @DbType      ["DateTime"]
      */
-    public $phone;
-
-    /**
-     * @Column
-     * @Required    ["You must assign a email"]
-     * @Email       ["Must be a valid email address"]
-     * @MaxLength   [50, "email must be no longer than 50 characters"]
-     */
-    public $email;
-
-    /**
-     * @Column
-     * @Required    ["You must assign an address"]
-     * @MaxLength   [50, "address must be no longer than 50 characters"]
-     */
-    public $address;
-
-    /**
-     * @Column
-     * @Required    ["You must assign a city"]
-     * @MaxLength   [50, "city must be no longer than 50 characters"]
-     */
-    public $city;
-
-    /**
-     * @Column
-     * @Required    ["You must assign a postal"]
-     * @MaxLength   [6, "postal must be no longer than 6 characters"]
-     * @Regex       ["/^\\d{3}(\\s)?\\d{2}$/", "Must be a valid postal code"]
-     * @Numeric     ["postal must be numeric"]
-     */
-    public $postal;
+    public $created;
 
 }

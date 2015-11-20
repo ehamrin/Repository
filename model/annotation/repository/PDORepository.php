@@ -1,7 +1,7 @@
 <?php
 
 
-namespace model\annotation;
+namespace model\annotation\repository;
 
 
 class PDORepository extends AnnotationRepository implements \model\IRepository
@@ -163,12 +163,17 @@ class PDORepository extends AnnotationRepository implements \model\IRepository
         try {
             $values = array();
             $params = array();
+            $columns = array();
             foreach ($this->columns as $column) {
-                $values[] = ":$column";
-                $params[$column] = $this->getColumnValue($column, $model);
+                //Don't insert into table if the value is NULL and it has a default value in database
+                if($this->getColumnValue($column, $model) != null || !isset($this->columnAnnotation[$column]['Default'])){
+                    $columns[] = $column;
+                    $values[] = ":$column";
+                    $params[$column] = $this->getColumnValue($column, $model);
+                }
             }
 
-            $stmt = $this->db->prepare("INSERT INTO $this->tableName (" . implode(', ', $this->columns) . ") VALUES (" . implode(', ', $values) . ")");
+            $stmt = $this->db->prepare("INSERT INTO $this->tableName (" . implode(', ', $columns) . ") VALUES (" . implode(', ', $values) . ")");
 
             $stmt->execute($params);
             $id = $this->db->lastInsertId();
@@ -253,6 +258,7 @@ class PDORepository extends AnnotationRepository implements \model\IRepository
         while($row = $stmt->fetchObject()){
             $inTable[$row->Field] = $row;
         }
+
         foreach($columns as $name => $doc){
             if(isset($doc['Unique'])){
                 $unique[$name] = $name;
@@ -260,11 +266,15 @@ class PDORepository extends AnnotationRepository implements \model\IRepository
 
             if(isset($inTable[$name])){
                 $row = $inTable[$name];
+
                 if(
                     $row->Null == 'YES' && isset($doc['Required']) ||
                     $row->Null == 'NO' && !isset($doc['Required']) ||
-                    (isset($doc['DbType']) && $row->Type != $doc['DbType'])
+                    (isset($doc['DbType']) && $row->Type != strtolower($doc['DbType'][0])) ||
+                    (isset($doc['Default']) && !($row->Default == strtolower($doc['Default'][0]) || $row->Default == $doc['Default'][0])) ||
+                    (!isset($doc['Default']) && !is_null($row->Default))
                 ){
+
                     $sql .= "ALTER TABLE `$this->tableName` CHANGE `$row->Field` {$this->getSqlForColumn($name, $doc)};";
                 }
             }else{
@@ -289,7 +299,7 @@ class PDORepository extends AnnotationRepository implements \model\IRepository
         if(self::$updateIndexOnConstruct){
             $sql .= $this->updateUniqueSql($unique);
         }
-
+        debug($sql);
         if(!empty($sql)){
             $this->db->exec($sql);
         }
@@ -300,7 +310,18 @@ class PDORepository extends AnnotationRepository implements \model\IRepository
     private function getSqlForColumn($column, $docs)
     {
         $type = isset($docs['DbType']) ? $docs['DbType'][0] : 'varchar(150)';
-        $required = isset($docs['Required']) ? 'NOT NULL' : 'NULL DEFAULT NULL';
+        $default = 'DEFAULT NULL';
+        if(
+            isset($docs['Required']) && isset($docs['Default']) ||
+            !isset($docs['Required']) && isset($docs['Default'])
+        ){
+            $default = $this->getDefaultValue($docs['Default'][0]);
+        }elseif(isset($docs['Required']) && !isset($docs['Default'])){
+            $default = '';
+        }
+
+        $required = isset($docs['Required']) ? "NOT NULL $default" : "NULL $default";
+
         return "`$column` $type COLLATE utf8_swedish_ci $required";
     }
 
@@ -312,6 +333,17 @@ class PDORepository extends AnnotationRepository implements \model\IRepository
         }
 
         return "";
+    }
+
+    private function getDefaultValue($value){
+        switch($value){
+            case 'CURRENT_TIMESTAMP':
+                return "DEFAULT $value";
+                break;
+            default:
+                return "DEFAULT '$value'";
+                break;
+        }
     }
 
     private function updateUniqueSql(array $unique){
