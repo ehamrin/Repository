@@ -3,7 +3,7 @@
 
 namespace model;
 
-abstract class Validation
+abstract class Validation implements IValidation
 {
     private $message;
     public function __construct($message){
