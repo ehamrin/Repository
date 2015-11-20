@@ -45,13 +45,13 @@ abstract class AnnotationRepository
             $modelClass = "\\" . $modelClass;
         }
         if($modelClass != $this->model){
-            throw new \BadMethodCallException("Model is not a repository model class");
+            throw new \BadMethodCallException("AnnotationModel is not a repository model class");
         }
     }
 
     private function findPrimaryKey(){
         foreach($this->reflection->getProperties() as $property){
-            $reader = new Reader($this->model, $property->name, 'property');
+            $reader = new DocBlockReader($this->model, $property->name, 'property');
             if($reader->getParameter("Primary")){
                 return $property->name;
             }
@@ -63,7 +63,7 @@ abstract class AnnotationRepository
     private function findColumns(){
         $columns = array();
         foreach($this->reflection->getProperties() as $property){
-            $reader = new Reader($this->model, $property->name, 'property');
+            $reader = new DocBlockReader($this->model, $property->name, 'property');
             if($reader->getParameter("Column") && !$reader->getParameter("Primary")){
                 $columns[$property->name] = $property->name;
                 $this->columnAnnotation[$property->name] = $reader->getParameters();
@@ -73,7 +73,7 @@ abstract class AnnotationRepository
     }
 
     private function findTableName(){
-        $reader = new Reader($this->model);
+        $reader = new DocBlockReader($this->model);
         if($reader->getParameter("Table")){
             return $reader->getParameter("Table")[0];
         }

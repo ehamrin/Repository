@@ -2,7 +2,7 @@
 
 namespace model\annotation;
 
-abstract class Model implements \model\IModel
+abstract class AnnotationModel implements \model\IModel
 {
     private $_modelErrors = array();
 
@@ -13,7 +13,7 @@ abstract class Model implements \model\IModel
 
         foreach($properties as $property){
 
-            $reader = new Reader($property->class, $property->name, 'property');
+            $reader = new DocBlockReader($property->class, $property->name, 'property');
             $property->setAccessible(true);
 
             $value = $property->getValue($this);

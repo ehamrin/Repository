@@ -7,7 +7,7 @@ namespace model\annotation;
 
 class ReaderException extends \Exception {}
 
-class Reader
+class DocBlockReader
 {
     private $rawDocBlock;
     private $parameters;

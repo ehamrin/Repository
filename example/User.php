@@ -1,9 +1,9 @@
 <?php
-
+namespace example;
 /**
  * @Table   ["user"]
  */
-class User extends \model\annotation\Model
+class User extends \model\annotation\AnnotationModel
 {
     /**
      * @Primary

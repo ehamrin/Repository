@@ -7,7 +7,7 @@ namespace model\annotation;
 class PDORepository extends AnnotationRepository implements \model\IRepository
 {
 
-    private $_objects = null;
+    private $_objects = array();
 
 
     private static $deleteOnMapMismatch = true;
@@ -37,7 +37,7 @@ class PDORepository extends AnnotationRepository implements \model\IRepository
             ));
 
             if (!$stmt->rowCount()) {
-                throw new \PDOException("Could not find model in database");
+                throw new \PDOException("Could not find model with primary key \"$primary\" in database");
             }
             $obj = $stmt->fetchObject($this->model);
             $this->_objects[$this->getPrimaryValue($obj)] = $obj;
