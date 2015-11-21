@@ -119,6 +119,26 @@ class PDORepository extends AnnotationRepository implements \model\IRepository
           DROP TABLE IF EXISTS `{$this->tableName}`
         ");
     }
+
+    public function orderBy($value, $order = 'ASC'){
+        usort($this->_objects, function($a, $b) use ($value, $order) {
+
+            $a = $this->getColumnValue($value, $a);
+            $b = $this->getColumnValue($value, $b);
+
+            if ($a == $b){
+                return 0;
+            }elseif($order == 'ASC'){
+                return ($a < $b) ? -1 : 1;
+            }else{
+                return ($a > $b) ? -1 : 1;
+            }
+
+        });
+
+        return $this->_objects;
+    }
+
     /**
      * @param \model\IModel $model
      * @return bool
