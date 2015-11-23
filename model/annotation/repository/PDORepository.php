@@ -4,11 +4,13 @@
 namespace model\annotation\repository;
 
 
-class PDORepository extends AnnotationRepository implements \model\IRepository
+use model\annotation\AnnotationModel;
+use model\IRepository;
+
+class PDORepository extends AnnotationRepository implements IRepository
 {
 
-    private $_objects = array();
-
+    private static $_objects = array();
 
     private static $deleteOnMapMismatch = true;
     private static $checkTableOnConstruct = true;
@@ -17,37 +19,44 @@ class PDORepository extends AnnotationRepository implements \model\IRepository
     public function __construct($className, \PDO $conn)
     {
         parent::__construct($className);
+
+        if(!isset(self::$_objects[$this->tableName])){
+            self::$_objects[$this->tableName] = array();
+        }
+
         $this->db = $conn;
 
         if(self::$checkTableOnConstruct){
             $this->checkTable();
         }
+        PDORepositoryFactory::add($this->model, $this);
     }
 
     /**
      * @param $primary
-     * @return \model\IModel
+     * @return AnnotationModel
      */
     public function find($primary)
     {
-        if (!isset($this->_objects[$primary])) {
+        if (!isset(self::$_objects[$this->tableName][$primary])) {
             $stmt = $this->db->prepare("SELECT * FROM $this->tableName WHERE $this->primaryKey = :primary LIMIT 1");
             $stmt->execute(array(
                 'primary' => $primary
             ));
 
             if (!$stmt->rowCount()) {
-                throw new \PDOException("Could not find model with primary key \"$primary\" in database");
+                return null;
             }
             $obj = $stmt->fetchObject($this->model);
-            $this->_objects[$this->getPrimaryValue($obj)] = $obj;
+            $this->mapObject($obj);
+            self::$_objects[$this->tableName][$this->getPrimaryValue($obj)] = $obj;
         }
-        return $this->_objects[$primary];
+        return self::$_objects[$this->tableName][$primary];
     }
 
 
     /**
-     * @return \model\IModel[]
+     * @return AnnotationModel[]
      */
     public function findAll()
     {
@@ -55,18 +64,29 @@ class PDORepository extends AnnotationRepository implements \model\IRepository
         $stmt = $this->db->prepare("SELECT * FROM $this->tableName");
         $stmt->execute();
         while ($obj = $stmt->fetchObject($this->model)) {
-            if (!isset($this->_objects[$this->getPrimaryValue($obj)])) {
-                $this->_objects[$this->getPrimaryValue($obj)] = $obj;
+            if (!isset(self::$_objects[$this->tableName][$this->getPrimaryValue($obj)])) {
+                $this->mapObject($obj);
+                self::$_objects[$this->tableName][$this->getPrimaryValue($obj)] = $obj;
             }
         }
-        return $this->_objects;
+        return self::$_objects[$this->tableName];
+    }
+
+    private function mapObject(AnnotationModel $model){
+        foreach($this->columnAnnotation as $column => $values){
+            if(isset($values['MappedBy']) && isset($values['var']) && class_exists($values['var'])){
+                $repository = PDORepositoryFactory::get($values['var'], $this->db);
+
+                $this->setValue($model, $column, $repository->find($this->getColumnValue($column, $model)));
+            }
+        }
     }
 
     /**
      * @param $maximumRows
      * @param $startRowIndex
      * @param $totalRowCount
-     * @return \model\IModel[]
+     * @return AnnotationModel[]
      */
     public function paginate($maximumRows, $startRowIndex, &$totalRowCount)
     {
@@ -82,10 +102,10 @@ class PDORepository extends AnnotationRepository implements \model\IRepository
     }
 
     /**
-     * @param \model\IModel $model
+     * @param AnnotationModel $model
      * @return bool
      */
-    public function save(\model\IModel $model)
+    public function save($model)
     {
         $this->isOfProperClass($model);
 
@@ -102,9 +122,9 @@ class PDORepository extends AnnotationRepository implements \model\IRepository
     }
 
     /**
-     * @param \model\IModel $model
+     * @param AnnotationModel $model
      */
-    public function delete(\model\IModel $model)
+    public function delete($model)
     {
         $this->isOfProperClass($model);
 
@@ -120,8 +140,14 @@ class PDORepository extends AnnotationRepository implements \model\IRepository
         ");
     }
 
-    public function orderBy($value, $order = 'ASC'){
-        usort($this->_objects, function($a, $b) use ($value, $order) {
+    /**
+     * @param string $value
+     * @param string $order
+     * @return array
+     */
+    public function orderBy($value = null, $order = 'ASC'){
+        $value = $value == null ? $this->primaryKey : $value;
+        usort(self::$_objects[$this->tableName], function($a, $b) use ($value, $order) {
 
             $a = $this->getColumnValue($value, $a);
             $b = $this->getColumnValue($value, $b);
@@ -131,19 +157,19 @@ class PDORepository extends AnnotationRepository implements \model\IRepository
             }elseif($order == 'ASC'){
                 return ($a < $b) ? -1 : 1;
             }else{
-                return ($a > $b) ? -1 : 1;
+                return ($b < $a) ? -1 : 1;
             }
 
         });
 
-        return $this->_objects;
+        return self::$_objects[$this->tableName];
     }
 
     /**
-     * @param \model\IModel $model
+     * @param AnnotationModel $model
      * @return bool
      */
-    private function update(\model\IModel $model)
+    private function update(AnnotationModel $model)
     {
         $this->db->beginTransaction();
         try {
@@ -173,11 +199,11 @@ class PDORepository extends AnnotationRepository implements \model\IRepository
     }
 
     /**
-     * @param \model\IModel $model
+     * @param AnnotationModel $model
      * @return bool
      * @throws \Exception
      */
-    private function create(\model\IModel $model)
+    private function create(AnnotationModel $model)
     {
         $this->db->beginTransaction();
         try {
@@ -190,6 +216,18 @@ class PDORepository extends AnnotationRepository implements \model\IRepository
                     $columns[] = $column;
                     $values[] = ":$column";
                     $params[$column] = $this->getColumnValue($column, $model);
+
+                    if(is_object($params[$column]) && is_a($params[$column], '\\model\\annotation\\AnnotationModel') && isset($this->columnAnnotation[$column]['MappedBy'])){
+                        $value = new \ReflectionProperty(get_class($params[$column]), $this->columnAnnotation[$column]['MappedBy'][0]);
+                        $value->setAccessible(true);
+                        $value = $value->getValue($params[$column]);
+
+                        if($value == null){
+                            throw new \Exception("Mapped value cannot be null");
+                        }
+
+                        $params[$column] = $value;
+                    }
                 }
             }
 
@@ -198,17 +236,21 @@ class PDORepository extends AnnotationRepository implements \model\IRepository
             $stmt->execute($params);
             $id = $this->db->lastInsertId();
             $this->setPrimaryValue($model, $id);
-            $this->_objects[$id] = $model;
+            self::$_objects[$this->tableName][$id] = $model;
 
             $this->db->commit();
         } catch (\Exception $e) {
             $this->db->rollBack();
-            throw new \PDOException("Error occurred when adding model to db");
+            throw $e;
+            //throw new \PDOException("Error occurred when adding model to db");
         }
 
         return true;
     }
 
+    /**
+     * @comment Queries database to check if the table exists
+     */
     private function tableExists()
     {
         try {
@@ -221,6 +263,9 @@ class PDORepository extends AnnotationRepository implements \model\IRepository
         return $result !== FALSE;
     }
 
+    /**
+     * @comment Determines if the table needs to be created or updated
+     */
     private function checkTable()
     {
         if ($this->tableExists()) {
@@ -230,6 +275,9 @@ class PDORepository extends AnnotationRepository implements \model\IRepository
         }
     }
 
+    /**
+     * @comment Adds table and columns to database along with Unique and Primary Key
+     */
     private function setupTable()
     {
         $columns = array();
@@ -264,6 +312,9 @@ class PDORepository extends AnnotationRepository implements \model\IRepository
         $this->db->exec($sql);
     }
 
+    /**
+     * @comment Checks table and columns in database along with Unique and Primary Key and updates if necessary
+     */
     private function updateTable()
     {
         $stmt = $this->db->prepare("DESCRIBE $this->tableName");
@@ -319,14 +370,19 @@ class PDORepository extends AnnotationRepository implements \model\IRepository
         if(self::$updateIndexOnConstruct){
             $sql .= $this->updateUniqueSql($unique);
         }
-        debug($sql);
+
         if(!empty($sql)){
             $this->db->exec($sql);
         }
-
-
     }
 
+    /**
+     * @param $column
+     * @param $docs
+     * @return string
+     *
+     * @comment Return SQL query for column
+     */
     private function getSqlForColumn($column, $docs)
     {
         $type = isset($docs['DbType']) ? $docs['DbType'][0] : 'varchar(150)';
@@ -345,16 +401,6 @@ class PDORepository extends AnnotationRepository implements \model\IRepository
         return "`$column` $type COLLATE utf8_swedish_ci $required";
     }
 
-    private function getUniqueSql(array $unique){
-        if(count($unique)){
-            return "
-              CREATE UNIQUE INDEX uc_{$this->tableName} ON {$this->tableName}(" . implode(', ', $unique) . ");
-            ";
-        }
-
-        return "";
-    }
-
     private function getDefaultValue($value){
         switch($value){
             case 'CURRENT_TIMESTAMP':
@@ -366,6 +412,28 @@ class PDORepository extends AnnotationRepository implements \model\IRepository
         }
     }
 
+    /**
+     * @param array $unique
+     * @return string
+     *
+     * @comment Return SQL query for creating a Unique index
+     */
+    private function getUniqueSql(array $unique){
+        if(count($unique)){
+            return "
+              CREATE UNIQUE INDEX uc_{$this->tableName} ON {$this->tableName}(" . implode(', ', $unique) . ");
+            ";
+        }
+
+        return "";
+    }
+
+    /**
+     * @param array $unique
+     * @return string
+     *
+     * @comment Checks if Unique indexes need to be added/deleted and updates them
+     */
     private function updateUniqueSql(array $unique){
         $sql = "";
         $stmt = $this->db->prepare("SHOW INDEX FROM {$this->tableName} WHERE Key_name = :name;");

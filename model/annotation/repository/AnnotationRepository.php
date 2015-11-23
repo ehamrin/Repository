@@ -2,6 +2,7 @@
 
 namespace model\annotation\repository;
 
+use model\annotation\AnnotationModel;
 use model\annotation\DocBlockReader;
 
 abstract class AnnotationRepository
@@ -79,7 +80,7 @@ abstract class AnnotationRepository
         if($reader->getParameter("Table")){
             return $reader->getParameter("Table")[0];
         }
-        return array_pop(explode('\\', $this->model));
+        return str_replace('\\', '_', $this->model);
     }
 
     protected function getColumnValue($column, $model){
@@ -88,14 +89,18 @@ abstract class AnnotationRepository
         return $primary->getValue($model);
     }
 
-    protected function getPrimaryValue(\model\IModel $model){
+    protected function getPrimaryValue(AnnotationModel $model){
         $primary = new \ReflectionProperty($this->model, $this->primaryKey);
         $primary->setAccessible(true);
         return $primary->getValue($model);
     }
 
-    protected function setPrimaryValue(\model\IModel $model, $value){
-        $primary = new \ReflectionProperty($this->model, $this->primaryKey);
+    protected function setPrimaryValue(AnnotationModel $model, $value){
+        $this->setValue($model, $this->primaryKey, $value);
+    }
+
+    protected function setValue(AnnotationModel $model, $column, $value){
+        $primary = new \ReflectionProperty($this->model, $column);
         $primary->setAccessible(true);
         $primary->setValue($model, $value);
     }
