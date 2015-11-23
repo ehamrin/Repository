@@ -74,12 +74,33 @@ class PDORepository extends AnnotationRepository implements IRepository
 
     private function mapObject(AnnotationModel $model){
         foreach($this->columnAnnotation as $column => $values){
-            if(isset($values['MappedBy']) && isset($values['var']) && class_exists($values['var'])){
-                $repository = PDORepositoryFactory::get($values['var'], $this->db);
+            if(isset($values['MappedBy']) && isset($values['var'])){
+                if(class_exists($values['var'])){
+                    $this->setValue($model, $column, $this->findExternal($values['var'], $this->getColumnValue($column, $model)));
+                }elseif(substr($values['var'], -2) == '[]'  && isset($values['var'])){
+                    $primaryKeys = json_decode($this->getColumnValue($column, $model));
+                    if(is_array($primaryKeys)){
+                        $objects = array();
 
-                $this->setValue($model, $column, $repository->find($this->getColumnValue($column, $model)));
+                        foreach($primaryKeys as $primaryKey){
+                            $loaded =  $this->findExternal(str_replace('[]', '', $values['var']), $primaryKey);
+                            if($loaded != null){
+                                $objects[] = $loaded;
+                            }
+                        }
+
+                        $this->setValue($model, $column, $objects);
+                    }
+
+                }
+
             }
         }
+    }
+
+    private function findExternal($class, $primaryValue){
+        $repository = PDORepositoryFactory::get($class, $this->db);
+        return $repository->find($primaryValue);
     }
 
     /**
@@ -218,15 +239,16 @@ class PDORepository extends AnnotationRepository implements IRepository
                     $params[$column] = $this->getColumnValue($column, $model);
 
                     if(is_object($params[$column]) && is_a($params[$column], '\\model\\annotation\\AnnotationModel') && isset($this->columnAnnotation[$column]['MappedBy'])){
-                        $value = new \ReflectionProperty(get_class($params[$column]), $this->columnAnnotation[$column]['MappedBy'][0]);
-                        $value->setAccessible(true);
-                        $value = $value->getValue($params[$column]);
 
-                        if($value == null){
-                            throw new \Exception("Mapped value cannot be null");
+                        $params[$column] = $this->getPrimaryFromExternal(get_class($params[$column]), $this->columnAnnotation[$column]['MappedBy'][0], $params[$column]);
+
+                    }elseif(is_array($params[$column]) && isset($this->columnAnnotation[$column]['MappedBy'])){
+                        $array = array();
+                        foreach($params[$column] as $object){
+                            $array[] = $this->getPrimaryFromExternal(get_class($object), $this->columnAnnotation[$column]['MappedBy'][0], $object);
                         }
 
-                        $params[$column] = $value;
+                        $params[$column] = json_encode($array);
                     }
                 }
             }
@@ -246,6 +268,19 @@ class PDORepository extends AnnotationRepository implements IRepository
         }
 
         return true;
+    }
+
+    private function getPrimaryFromExternal($class, $primary, $object){
+        $value = new \ReflectionProperty($class, $primary);
+        $value->setAccessible(true);
+
+        if($value == null){
+            throw new \Exception("Mapped value cannot be null");
+        }
+
+        return $value->getValue($object);
+
+
     }
 
     /**

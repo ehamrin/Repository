@@ -30,9 +30,8 @@ class User extends \model\annotation\AnnotationModel
 
     /**
      * @Column
-     * @Required    ["You must assign a IP"]
      * @MappedBy    ["id"]
-     * @var \example\IPLog
+     * @var \example\IPLog[]
      */
     protected $ip;
 
@@ -43,5 +42,12 @@ class User extends \model\annotation\AnnotationModel
      * @DbType      ["DateTime"]
      */
     private $created;
+
+    public function addIP(IPLog $log){
+        if($this->ip == null){
+            $this->ip = array();
+        }
+        $this->ip[] = $log;
+    }
 
 }
