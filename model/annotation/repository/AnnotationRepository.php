@@ -8,7 +8,7 @@ use model\annotation\DocBlockReader;
 abstract class AnnotationRepository
 {
 
-    private static $defaultPrimaryKey = 'id';
+    protected static $defaultPrimaryKey = 'id';
 
     protected $model;
     protected $primaryKey;

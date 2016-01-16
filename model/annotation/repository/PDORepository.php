@@ -140,6 +140,60 @@ class PDORepository extends AnnotationRepository implements IRepository
         }
     }
 
+    private function deleteExternalAttributes($model){
+        $reader = new DocBlockReader($this->model);
+        if($reader->getParameter("ManyToMany")) {
+            $relationship = $reader->getParameter("ManyToMany");
+            if (is_array($relationship)) {
+                $table = $relationship[2];
+
+                $stmt = $this->db->prepare("DELETE FROM $table WHERE " . self::getShortClassName($this->model) . " = ?");
+                $stmt->execute(array($this->getPrimaryValue($model)));
+            }
+        }
+    }
+
+    private function saveExternalAttributes($model){
+        $reader = new DocBlockReader($this->model);
+        if($reader->getParameter("ManyToMany")) {
+            $relationship = $reader->getParameter("ManyToMany");
+            if (is_array($relationship)) {
+                $class = $relationship[0];
+                $property = $relationship[1];
+                $table = $relationship[2];
+
+                $foreignPrimarykey = self::$defaultPrimaryKey;
+
+                $foreignReader = new \ReflectionClass($class);
+                foreach($foreignReader->getProperties() as $property){
+                    $foreignDocBlock = new DocBlockReader($class, $property->name, 'property');
+                    if($foreignDocBlock->getParameter("Primary")){
+                        $foreignPrimarykey = $property->name;
+                    }
+                }
+
+                $this->deleteExternalAttributes($model);
+                $stmt = $this->db->prepare("INSERT INTO $table (" . self::getShortClassName($class) . ", " . self::getShortClassName($this->model) . ") VALUE(?,?)");
+
+                foreach($model->{$property} as $foreignObject){
+                    $foreignId = $foreignReader->getProperty($foreignPrimarykey);
+                    $foreignId->setAccessible(true);
+                    $stmt->execute(array($this->getPrimaryValue($model), $foreignId->getValue($foreignObject)));
+
+                }
+
+
+                $result = array();
+                foreach ($stmt->fetchAll() as $row) {
+                    $result[] = $this->findExternal($class, $row[self::getShortClassName($class)]);
+
+                }
+
+                $model->$property = $result;
+            }
+        }
+    }
+
     private function setupExternalTable($table, $thisClass, $externalClass){
 
         $this->db->exec("
@@ -205,6 +259,8 @@ class PDORepository extends AnnotationRepository implements IRepository
         $stmt->execute(array(
             'primary' => $this->getPrimaryValue($model)
         ));
+
+        $this->deleteExternalAttributes($model);
     }
 
     public function uninstall(){
@@ -262,6 +318,9 @@ class PDORepository extends AnnotationRepository implements IRepository
             );
 
             $stmt->execute($params);
+
+            $this->saveExternalAttributes($model);
+
             $this->db->commit();
         } catch (\Exception $e) {
             $this->db->rollBack();
@@ -311,6 +370,8 @@ class PDORepository extends AnnotationRepository implements IRepository
             $id = $this->db->lastInsertId();
             $this->setPrimaryValue($model, $id);
             self::$_objects[$this->tableName][$id] = $model;
+
+            $this->saveExternalAttributes($model);
 
             $this->db->commit();
         } catch (\Exception $e) {
