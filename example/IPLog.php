@@ -1,8 +1,8 @@
 <?php
 namespace example;
 /**
- * Class IPLog
  * @Table ["log"]
+ * @ManyToMany ["\\example\\User", "users", "user_ip"]
  */
 class IPLog extends \model\annotation\AnnotationModel
 {
@@ -19,5 +19,7 @@ class IPLog extends \model\annotation\AnnotationModel
      * @Unique      ["Must be unique"]
      */
     public $address;
+
+    public $users;
 
 }

@@ -28,4 +28,4 @@ if(!$userRepository->save($model)){
   debug($model->getModelError());
 }
 */
-debug($userRepository->findAll());
+debug($ipRepository->findAll());

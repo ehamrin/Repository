@@ -6,6 +6,7 @@ namespace model\annotation\repository;
 
 use model\annotation\AnnotationModel;
 use model\IRepository;
+use model\annotation\DocBlockReader;
 
 class PDORepository extends AnnotationRepository implements IRepository
 {
@@ -49,7 +50,6 @@ class PDORepository extends AnnotationRepository implements IRepository
             }
             $obj = $stmt->fetchObject($this->model);
             $this->mapObject($obj);
-            self::$_objects[$this->tableName][$this->getPrimaryValue($obj)] = $obj;
         }
         return self::$_objects[$this->tableName][$primary];
     }
@@ -66,7 +66,22 @@ class PDORepository extends AnnotationRepository implements IRepository
         while ($obj = $stmt->fetchObject($this->model)) {
             if (!isset(self::$_objects[$this->tableName][$this->getPrimaryValue($obj)])) {
                 $this->mapObject($obj);
-                self::$_objects[$this->tableName][$this->getPrimaryValue($obj)] = $obj;
+            }
+        }
+        return self::$_objects[$this->tableName];
+    }
+
+    /**
+     * @return AnnotationModel[]
+     */
+    public function findWhere($column, $operator, $value)
+    {
+
+        $stmt = $this->db->prepare("SELECT * FROM $this->tableName WHERE $column $operator ?");
+        $stmt->execute(array($value));
+        while ($obj = $stmt->fetchObject($this->model)) {
+            if (!isset(self::$_objects[$this->tableName][$this->getPrimaryValue($obj)])) {
+                $this->mapObject($obj);
             }
         }
         return self::$_objects[$this->tableName];
@@ -77,25 +92,62 @@ class PDORepository extends AnnotationRepository implements IRepository
             if(isset($values['MappedBy']) && isset($values['var'])){
                 if(class_exists($values['var'])){
                     $this->setValue($model, $column, $this->findExternal($values['var'], $this->getColumnValue($column, $model)));
-                }elseif(substr($values['var'], -2) == '[]'  && isset($values['var'])){
-                    $primaryKeys = json_decode($this->getColumnValue($column, $model));
-                    if(is_array($primaryKeys)){
-                        $objects = array();
+                }
+            }
+        }
 
-                        foreach($primaryKeys as $primaryKey){
-                            $loaded =  $this->findExternal(str_replace('[]', '', $values['var']), $primaryKey);
-                            if($loaded != null){
-                                $objects[] = $loaded;
-                            }
-                        }
+        self::$_objects[$this->tableName][$this->getPrimaryValue($model)] = $model;
+        $this->fetchExternalAttributes($model);
+    }
 
-                        $this->setValue($model, $column, $objects);
-                    }
+    private function fetchExternalAttributes($model){
+        $reader = new DocBlockReader($this->model);
+        if($reader->getParameter("ManyToMany")) {
+            $relationship = $reader->getParameter("ManyToMany");
+            if (is_array($relationship)) {
+                $class = $relationship[0];
+                $property = $relationship[1];
+                $table = $relationship[2];
+
+                if (!$this->tableExists($table)) {
+                    $this->setupExternalTable($table, self::getShortClassName($this->model), self::getShortClassName($class));
+                }
+
+                $stmt = $this->db->prepare("SELECT " . self::getShortClassName($class) . " FROM $table WHERE " . self::getShortClassName($this->model) . " = ?");
+                $stmt->execute(array($this->getPrimaryValue($model)));
+
+                $result = array();
+                foreach ($stmt->fetchAll() as $row) {
+                    $result[] = $this->findExternal($class, $row[self::getShortClassName($class)]);
 
                 }
 
+                $model->$property = $result;
             }
         }
+
+        if($reader->getParameter("HasMany")) {
+            $relationship = $reader->getParameter("HasMany");
+            if (is_array($relationship)) {
+                $class = $relationship[0];
+                $property = $relationship[1];
+                $connected = $relationship[2];
+
+                $repository = PDORepositoryFactory::get($class, $this->db);
+
+                $this->{$property} = $repository->findWhere($connected, '=', $this->getPrimaryValue($model));
+            }
+        }
+    }
+
+    private function setupExternalTable($table, $thisClass, $externalClass){
+
+        $this->db->exec("
+            CREATE TABLE IF NOT EXISTS `$table` (
+                `$thisClass` int(11) NOT NULL,
+                `$externalClass` int(11) NOT NULL
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_swedish_ci;
+        ");
     }
 
     private function findExternal($class, $primaryValue){
@@ -286,10 +338,10 @@ class PDORepository extends AnnotationRepository implements IRepository
     /**
      * @comment Queries database to check if the table exists
      */
-    private function tableExists()
+    private function tableExists($table)
     {
         try {
-            $result = $this->db->query("SELECT 1 FROM $this->tableName LIMIT 1");
+            $result = $this->db->query("SELECT 1 FROM $table LIMIT 1");
         } catch (\Exception $e) {
             return FALSE;
         }
@@ -303,7 +355,7 @@ class PDORepository extends AnnotationRepository implements IRepository
      */
     private function checkTable()
     {
-        if ($this->tableExists()) {
+        if ($this->tableExists($this->tableName)) {
             $this->updateTable();
         } else {
             $this->setupTable();

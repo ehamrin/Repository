@@ -4,6 +4,7 @@ use model\validators\IP;
 
 /**
  * @Table   ["user"]
+ * @ManyToMany ["\\example\\IPLog", "ip", "user_ip"]
  */
 class User extends \model\annotation\AnnotationModel
 {
@@ -28,12 +29,7 @@ class User extends \model\annotation\AnnotationModel
      */
     protected $pid;
 
-    /**
-     * @Column
-     * @MappedBy    ["id"]
-     * @var \example\IPLog[]
-     */
-    protected $ip;
+    protected $ip = array();
 
     /**
      * @Column

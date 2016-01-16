@@ -105,5 +105,10 @@ abstract class AnnotationRepository
         $primary->setValue($model, $value);
     }
 
+    protected static function getShortClassName($name){
+        $name = explode("\\", $name);
+        return array_pop($name);
+    }
+
 
 }
