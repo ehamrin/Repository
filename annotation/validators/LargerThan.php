@@ -1,7 +1,7 @@
 <?php
-namespace model\validators;
 
-class LargerThanEqual extends \model\Validation
+namespace annotation\validators;
+class LargerThan extends \annotation\validation\Validation
 {
     private $max;
 
@@ -16,7 +16,6 @@ class LargerThanEqual extends \model\Validation
         if(!is_numeric($value)){
             return false;
         }
-
-        return empty($value) || ($value >= $this->max);
+        return empty($value) || ($value > $this->max);
     }
 }

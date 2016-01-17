@@ -3,7 +3,7 @@ namespace example;
 /**
  * @Table ["log"]
  */
-class IPLog extends \model\annotation\AnnotationModel
+class IPLog extends \annotation\model\AnnotationModel
 {
     /**
      * @Primary

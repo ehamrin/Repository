@@ -1,7 +1,7 @@
 <?php
 
-namespace model\validators;
-class MaxLength extends \model\Validation
+namespace annotation\validators;
+class MaxLength extends \annotation\validation\Validation
 {
     private $max;
 

@@ -1,7 +1,7 @@
 <?php
 
-namespace model\validators;
-class LessThanEqual extends \model\Validation
+namespace annotation\validators;
+class LessThanEqual extends \annotation\validation\Validation
 {
     private $min;
 

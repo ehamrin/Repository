@@ -1,7 +1,7 @@
 <?php
 namespace example;
 
-class UserRepository extends \model\annotation\repository\PDORepository
+class UserRepository extends \annotation\repository\PDORepository
 {
     public function __construct(\PDO $conn)
     {

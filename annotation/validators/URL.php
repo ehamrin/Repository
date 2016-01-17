@@ -1,7 +1,8 @@
 <?php
-namespace model\validators;
 
-class IP extends \model\Validation
+namespace annotation\validators;
+
+class URL extends \annotation\validation\Validation
 {
     public function Validate($value)
     {

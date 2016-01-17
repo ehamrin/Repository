@@ -6,7 +6,7 @@ use model\validators\IP;
  * @Table   ["user"]
  * @HasMany ["\\example\\IPLog", "ip", "user"]
  */
-class User extends \model\annotation\AnnotationModel
+class User extends \annotation\model\AnnotationModel
 {
     /**
      * @Primary

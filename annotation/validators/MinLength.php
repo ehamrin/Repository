@@ -1,7 +1,7 @@
 <?php
 
-namespace model\validators;
-class LessThan extends \model\Validation
+namespace annotation\validators;
+class MinLength extends \annotation\validation\Validation
 {
     private $min;
 
@@ -9,13 +9,11 @@ class LessThan extends \model\Validation
     {
         parent::__construct($message);
         $this->min = $min;
+
     }
 
     public function Validate($value)
     {
-        if(!is_numeric($value)){
-            return false;
-        }
-        return empty($value) || ($value < $this->min);
+        return empty($value) || (is_string($value) && strlen($value) >= $this->min);
     }
 }

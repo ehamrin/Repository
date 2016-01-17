@@ -1,8 +1,10 @@
 <?php
 
-namespace model\annotation;
+namespace annotation\model;
 
-abstract class AnnotationModel implements \model\IModel
+use annotation\DocBlockReader;
+
+abstract class AnnotationModel implements IModel
 {
     private $_modelErrors = array();
 
@@ -20,14 +22,14 @@ abstract class AnnotationModel implements \model\IModel
             foreach($reader->getParameters() as $name => $parameter){
 
                 //Validate against validation classes
-                $validationClass = '\\model\\validators\\' . $name;
+                $validationClass = '\\annotation\\validators\\' . $name;
                 if(class_exists($validationClass)){
                     if(is_array($parameter)){
                         $validator = new $validationClass(...$parameter);
                     }else{
                         $validator = new $validationClass($parameter);
                     }
-                    /** @var $validator \model\Validation */
+                    /** @var $validator \annotation\validation\Validation */
                     if(!$validator->Validate($value) && !($name == 'Required' && $reader->getParameter('Default'))){
                         $this->_modelErrors[$property->name][$name] = $validator->GetMessage();
                     }

@@ -1,12 +1,11 @@
 <?php
 
 
-namespace model\annotation\repository;
+namespace annotation\repository;
 
 
-use model\annotation\AnnotationModel;
-use model\IRepository;
-use model\annotation\DocBlockReader;
+use annotation\model\AnnotationModel;
+use annotation\DocBlockReader;
 
 class PDORepository extends AnnotationRepository implements IRepository
 {

@@ -1,7 +1,7 @@
 <?php
 
 
-namespace model;
+namespace annotation\validation;
 
 
 interface IValidation

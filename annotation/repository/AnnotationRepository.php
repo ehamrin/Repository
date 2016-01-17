@@ -1,9 +1,10 @@
 <?php
 
-namespace model\annotation\repository;
+namespace annotation\repository;
 
-use model\annotation\AnnotationModel;
-use model\annotation\DocBlockReader;
+use annotation\model\AnnotationModel;
+use annotation\model\IModel;
+use annotation\DocBlockReader;
 
 abstract class AnnotationRepository
 {
@@ -41,7 +42,7 @@ abstract class AnnotationRepository
 
 
 
-    protected function isOfProperClass(\model\IModel $model){
+    protected function isOfProperClass(IModel $model){
         //Add root namespace to classname if missing
         $modelClass = get_class($model);
         if(substr($modelClass, 0, 1) != "\\"){

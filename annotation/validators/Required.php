@@ -1,7 +1,7 @@
 <?php
 
-namespace model\validators;
-class Required extends \model\Validation
+namespace annotation\validators;
+class Required extends \annotation\validation\Validation
 {
     public function Validate($value)
     {

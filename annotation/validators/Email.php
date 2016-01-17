@@ -1,7 +1,7 @@
 <?php
 
-namespace model\validators;
-class Email extends \model\Validation
+namespace annotation\validators;
+class Email extends \annotation\validation\Validation
 {
     public function Validate($value)
     {

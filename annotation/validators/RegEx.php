@@ -1,7 +1,7 @@
 <?php
 
-namespace model\validators;
-class RegEx extends \model\Validation
+namespace annotation\validators;
+class RegEx extends \annotation\validation\Validation
 {
     const SWEDISH_PID = "/^((19|20)?[0-9]{2})(0[1-9]|1[012])(0[1-9]|[12][0-9]|3[01])(-)?[0-9pPtTfF][0-9]{3}$/";
     // 19930730-1234, 930730-1234, 930730-P123(foreigners)

@@ -1,7 +1,7 @@
 <?php
 
 
-namespace model;
+namespace annotation\repository;
 
 
 interface IRepository

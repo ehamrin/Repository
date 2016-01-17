@@ -1,7 +1,7 @@
 <?php
 
 
-namespace model\annotation\repository;
+namespace annotation\repository;
 
 
 class PDORepositoryFactory

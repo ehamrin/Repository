@@ -1,7 +1,7 @@
 <?php
 
-namespace model\validators;
-class Numeric extends \model\Validation
+namespace annotation\validators;
+class Numeric extends \annotation\validation\Validation
 {
     public function Validate($value)
     {
