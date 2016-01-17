@@ -4,7 +4,7 @@ use model\validators\IP;
 
 /**
  * @Table   ["user"]
- * @ManyToMany ["\\example\\IPLog", "ip", "user_ip"]
+ * @HasMany ["\\example\\IPLog", "ip", "user"]
  */
 class User extends \model\annotation\AnnotationModel
 {
@@ -38,12 +38,5 @@ class User extends \model\annotation\AnnotationModel
      * @DbType      ["DateTime"]
      */
     private $created;
-
-    public function addIP(IPLog $log){
-        if($this->ip == null){
-            $this->ip = array();
-        }
-        $this->ip[] = $log;
-    }
 
 }

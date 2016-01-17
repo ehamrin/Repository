@@ -137,7 +137,12 @@ class PDORepository extends AnnotationRepository implements IRepository
 
                 $repository = PDORepositoryFactory::get($class, $this->db);
 
-                $this->{$property} = $repository->findWhere($connected, '=', $this->getPrimaryValue($model));
+                $result = $repository->findWhere($connected, '=', $this->getPrimaryValue($model));
+
+                $rfProperty = new \ReflectionProperty($this->model, $property);
+                $rfProperty->setAccessible(true);
+
+                $rfProperty->setValue($model, $result);
             }
         }
     }
@@ -306,6 +311,12 @@ class PDORepository extends AnnotationRepository implements IRepository
             foreach ($this->columns as $column) {
                 $values[] = "$column = :$column";
                 $params[$column] = $this->getColumnValue($column, $model);
+
+                if(is_object($params[$column]) && is_a($params[$column], '\\model\\annotation\\AnnotationModel') && isset($this->columnAnnotation[$column]['MappedBy'])){
+
+                    $params[$column] = $this->getPrimaryFromExternal(get_class($params[$column]), $this->columnAnnotation[$column]['MappedBy'][0], $params[$column]);
+
+                }
             }
 
             $stmt = $this->db->prepare("UPDATE $this->tableName SET " . implode(', ', $values) . " WHERE $this->primaryKey = :primary");

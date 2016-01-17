@@ -2,7 +2,6 @@
 namespace example;
 /**
  * @Table ["log"]
- * @ManyToMany ["\\example\\User", "users", "user_ip"]
  */
 class IPLog extends \model\annotation\AnnotationModel
 {
@@ -20,6 +19,12 @@ class IPLog extends \model\annotation\AnnotationModel
      */
     public $address;
 
-    public $users;
+    /**
+     * @Column
+     * @Required    ["Must have a user"]
+     * @var \example\User
+     * @MappedBy ["id"]
+     */
+    public $user;
 
 }
