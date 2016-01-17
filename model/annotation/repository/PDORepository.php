@@ -121,8 +121,10 @@ class PDORepository extends AnnotationRepository implements IRepository
                     $result[] = $this->findExternal($class, $row[self::getShortClassName($class)]);
 
                 }
+                $rfProperty = new \ReflectionProperty($this->model, $property);
+                $rfProperty->setAccessible(true);
 
-                $model->$property = $result;
+                $rfProperty->setValue($model, $result);
             }
         }
 
@@ -159,7 +161,7 @@ class PDORepository extends AnnotationRepository implements IRepository
             $relationship = $reader->getParameter("ManyToMany");
             if (is_array($relationship)) {
                 $class = $relationship[0];
-                $property = $relationship[1];
+                $ownProperty = $relationship[1];
                 $table = $relationship[2];
 
                 $foreignPrimarykey = self::$defaultPrimaryKey;
@@ -173,23 +175,20 @@ class PDORepository extends AnnotationRepository implements IRepository
                 }
 
                 $this->deleteExternalAttributes($model);
-                $stmt = $this->db->prepare("INSERT INTO $table (" . self::getShortClassName($class) . ", " . self::getShortClassName($this->model) . ") VALUE(?,?)");
+                $stmt = $this->db->prepare("INSERT INTO user_ip (" . self::getShortClassName($class) . ", " . self::getShortClassName($this->model) . ") VALUES(?,?)");
 
-                foreach($model->{$property} as $foreignObject){
+                $rfProperty = new \ReflectionProperty($this->model, $ownProperty);
+                $rfProperty->setAccessible(true);
+
+
+
+                foreach($rfProperty->getValue($model) as $foreignObject){
                     $foreignId = $foreignReader->getProperty($foreignPrimarykey);
                     $foreignId->setAccessible(true);
-                    $stmt->execute(array($this->getPrimaryValue($model), $foreignId->getValue($foreignObject)));
+                    $stmt->execute(array($foreignId->getValue($foreignObject), $this->getPrimaryValue($model)));
+
 
                 }
-
-
-                $result = array();
-                foreach ($stmt->fetchAll() as $row) {
-                    $result[] = $this->findExternal($class, $row[self::getShortClassName($class)]);
-
-                }
-
-                $model->$property = $result;
             }
         }
     }
@@ -324,7 +323,8 @@ class PDORepository extends AnnotationRepository implements IRepository
             $this->db->commit();
         } catch (\Exception $e) {
             $this->db->rollBack();
-            throw new \PDOException("Error occurred when updating model in db");
+            //throw new \PDOException("Error occurred when updating model in db");
+            throw $e;
         }
 
         return true;

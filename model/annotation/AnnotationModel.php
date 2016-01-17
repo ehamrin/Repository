@@ -68,21 +68,4 @@ abstract class AnnotationModel implements \model\IModel
     public function getModelError(){
         return $this->_modelErrors;
     }
-
-    public function __get($name)
-    {
-        if(method_exists($this, "get_$name")){
-            return $this->{"get_$name"}();
-        }
-        return $this->{$name};
-    }
-
-    public function __set($name, $value)
-    {
-        if(method_exists($this, "set_$name")){
-            $this->{"set_$name"}($value);
-        }
-
-        $this->{$name} = $value;
-    }
 }
